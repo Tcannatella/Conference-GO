@@ -3,6 +3,7 @@ from .models import Conference, Location, State
 from common.json import ModelEncoder
 from django.views.decorators.http import require_http_methods
 import json
+import requests
 
 class LocationDetailEncoder(ModelEncoder):
     model = Location
@@ -90,7 +91,7 @@ def api_list_conferences(request):
             safe=False,
         )
 
-
+@require_http_methods(["GET","DELETE","PUT"])
 def api_show_conference(request, id):
     """
     Returns the details for the Conference model specified
@@ -116,11 +117,36 @@ def api_show_conference(request, id):
         }
     }
     """
-    conference = Conference.objects.get(id=id)
-    return JsonResponse(
-        conference,
-         encoder=ConferenceDetailEncoder, safe=False
-     )
+    ############### SHOW CONFERENCE DETAIL###############
+    if request.method == "GET":
+        conference = Conference.objects.get(id=id)
+        return JsonResponse(conference,encoder=ConferenceDetailEncoder,safe=False)
+    ############### DELETE CONFERENCE DETAIL###############
+    elif request.method == "DELETE":
+        count, _ = Conference.objects.filter(id=id).delete()
+        return JsonResponse({"deleted": count > 0})
+    ############### UPDATE CONFERENCE DETAIL###############
+    else:
+        content = json.loads(request.body)
+    # Get the Location object and put it in the content dict
+        try:
+            location = Location.objects.get(id=content["location"])
+            content["location"] = location
+        except Location.DoesNotExist:
+            return JsonResponse(
+                {"message": "invalid location id"},
+                status=400
+            )
+        conference = Conference.objects.create(**content)
+        return JsonResponse(
+            conference,
+            encoder=ConferenceDetailEncoder,
+            safe=False,
+        )
+
+
+
+
 
 @require_http_methods(["GET", "POST"])
 def api_list_locations(request):
@@ -197,14 +223,3 @@ def api_show_location(request, id):
                 {"message": "Invalid state abbreviation"},
                 status=400,
             )
-
-        # new code
-        Location.objects.filter(id=id).update(**content)
-
-        # copied from get detail
-        location = Location.objects.get(id=id)
-        return JsonResponse(
-            location,
-            encoder=LocationDetailEncoder,
-            safe=False,
-        )
