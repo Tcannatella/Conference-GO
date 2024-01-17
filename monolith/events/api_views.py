@@ -223,3 +223,12 @@ def api_show_location(request, id):
                 {"message": "Invalid state abbreviation"},
                 status=400,
             )
+        # new code
+        Location.objects.filter(id=id).update(**content)
+        # copied from get detail
+        location = Location.objects.get(id=id)
+        return JsonResponse(
+            location,
+            encoder=LocationDetailEncoder,
+            safe=False,
+        )
